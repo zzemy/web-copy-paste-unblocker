@@ -1,9 +1,13 @@
 // ==UserScript==
 // @name         解除网页限制（复制 / 粘贴 / 右键 通用版）
-// @namespace    http://tampermonkey.net/
-// @version      5.3
+// @namespace    https://github.com/zzemy/web-copy-paste-unblocker
+// @version      5.4
 // @description  解除网页的复制、粘贴、剪切、右键、划选限制，破除 user-select 等 CSS 限制，保护 Ctrl+C/V/X/A 快捷键；对 CodeMirror 编辑器额外提供粘贴穿透。默认对 pintia.cn、icourse163.org 生效，可在脚本顶部 CONFIG 中增删站点或开启全站模式。
-// @author       Your Name
+// @author       zzemy
+// @homepageURL  https://github.com/zzemy/web-copy-paste-unblocker
+// @supportURL   https://github.com/zzemy/web-copy-paste-unblocker/issues
+// @updateURL    https://raw.githubusercontent.com/zzemy/web-copy-paste-unblocker/main/web-copy-paste-unblocker.user.js
+// @downloadURL  https://raw.githubusercontent.com/zzemy/web-copy-paste-unblocker/main/web-copy-paste-unblocker.user.js
 // @match        *://*/*
 // @grant        none
 // @run-at       document-start
@@ -35,7 +39,7 @@
     if (!enabled) return;
 
     // 运行标记：在控制台执行 document.documentElement.dataset.copyUnblocker 可确认脚本是否生效
-    try { document.documentElement.dataset.copyUnblocker = '5.3'; } catch (_) {}
+    try { document.documentElement.dataset.copyUnblocker = '5.4'; } catch (_) {}
 
     // 已知的“自建编辑器”容器：这些编辑器靠取消默认事件 + 自己插入文本来工作，
     // 若把它们的 preventDefault 一并屏蔽，会出现“粘贴两遍 / 剪切异常”，因此放行。

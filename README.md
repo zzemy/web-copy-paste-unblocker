@@ -1,6 +1,6 @@
-# 🔓 解除网页限制（复制 / 粘贴 / 右键 通用版）
+# 🔓 web-copy-paste-unblocker
 
-一个 Tampermonkey / Greasemonkey 油猴脚本，用于解除网页对**复制、粘贴、剪切、右键、文本划选**的限制，并保护 `Ctrl+C / V / X / A` 快捷键。
+解除网页 **复制 / 粘贴 / 剪切 / 右键 / 划选** 限制的 Tampermonkey / Greasemonkey 油猴脚本，并保护 `Ctrl+C / V / X / A` 快捷键。
 
 默认对 **PTA 拼题A（pintia.cn）** 与 **中国大学 MOOC（icourse163.org）** 生效，也可在脚本顶部的 `CONFIG` 中自由增删站点，或一键开启全站模式。
 
@@ -18,8 +18,10 @@
 ## 安装与更新
 
 1. 浏览器安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 打开本仓库的 `web-copy-paste-unblocker.user.js`，点击右上角 **`Raw`**，按提示安装。
-3. 若你安装过旧版本（名字为「中国大学MOOC专用 + 快捷键保护」），请在 Tampermonkey 面板里**删除旧脚本**，两个脚本同时启用没有意义。
+2. 直接打开安装链接（或在仓库里点该文件的 **`Raw`**）：
+   <https://raw.githubusercontent.com/zzemy/web-copy-paste-unblocker/main/web-copy-paste-unblocker.user.js>
+3. **只保留一个**：Tampermonkey 按「`@name` + `@namespace`」识别脚本，凡是名字相同但 `@namespace` 不同的旧版本（历史版本曾叫「中国大学MOOC专用 + 快捷键保护」，`@namespace` 曾是 `http://tampermonkey.net/`）都会被当成**独立脚本**，请一律删除，只留本仓库这一个。
+4. 装完**重新加载目标页面**（油猴只在页面加载时注入）。
 
 ## 配置：让哪些网站生效
 
