@@ -18,7 +18,7 @@
 ## 安装与更新
 
 1. 浏览器安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 打开本仓库的 `icourse163-unblocker.user.js`，点击右上角 **`Raw`**，按提示安装。
+2. 打开本仓库的 `web-copy-paste-unblocker.user.js`，点击右上角 **`Raw`**，按提示安装。
 3. 若你安装过旧版本（名字为「中国大学MOOC专用 + 快捷键保护」），请在 Tampermonkey 面板里**删除旧脚本**，两个脚本同时启用没有意义。
 
 ## 配置：让哪些网站生效
