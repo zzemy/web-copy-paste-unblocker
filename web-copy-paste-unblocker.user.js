@@ -1,13 +1,9 @@
 // ==UserScript==
 // @name         解除网页限制（复制 / 粘贴 / 右键 通用版）
-// @namespace    https://github.com/zzemy/web-copy-paste-unblocker
-// @version      5.4
-// @description  解除网页的复制、粘贴、剪切、右键、划选限制，破除 user-select 等 CSS 限制，保护 Ctrl+C/V/X/A 快捷键；对 CodeMirror 编辑器额外提供粘贴穿透。默认对 pintia.cn、icourse163.org 生效，可在脚本顶部 CONFIG 中增删站点或开启全站模式。
-// @author       zzemy
-// @homepageURL  https://github.com/zzemy/web-copy-paste-unblocker
-// @supportURL   https://github.com/zzemy/web-copy-paste-unblocker/issues
-// @updateURL    https://raw.githubusercontent.com/zzemy/web-copy-paste-unblocker/main/web-copy-paste-unblocker.user.js
-// @downloadURL  https://raw.githubusercontent.com/zzemy/web-copy-paste-unblocker/main/web-copy-paste-unblocker.user.js
+// @namespace    http://tampermonkey.net/
+// @version      6.0
+// @description  解除网页的复制、粘贴、剪切、右键、划选限制，破除 user-select 等 CSS 限制，保护 Ctrl+C/V/X/A 快捷键；对 CodeMirror 6、CKEditor 5 等编辑器额外提供粘贴穿透。默认对 pintia.cn、icourse163.org、zhihuishu.com 生效，可在脚本顶部 CONFIG 中增删站点或开启全站模式。
+// @author       Your Name
 // @match        *://*/*
 // @grant        none
 // @run-at       document-start
@@ -26,8 +22,9 @@
         // 生效域名（自动包含其子域名）。需要新增站点时，直接加一行即可，例如：
         //   'example.com',
         sites: [
-            'pintia.cn',        // PTA 拼题A（考试 / 题目集）
-            'icourse163.org',   // 中国大学 MOOC
+            'pintia.cn',         // PTA 拼题A（考试 / 题目集）
+            'icourse163.org',    // 中国大学 MOOC
+            'zhihuishu.com',     // 智慧树（含 examloop / h5 / ai-smart-course-student-pro 等子域）
         ],
     };
     /* =================================================================== */
@@ -39,11 +36,21 @@
     if (!enabled) return;
 
     // 运行标记：在控制台执行 document.documentElement.dataset.copyUnblocker 可确认脚本是否生效
-    try { document.documentElement.dataset.copyUnblocker = '5.4'; } catch (_) {}
+    try { document.documentElement.dataset.copyUnblocker = '6.0'; } catch (_) {}
 
     // 已知的“自建编辑器”容器：这些编辑器靠取消默认事件 + 自己插入文本来工作，
     // 若把它们的 preventDefault 一并屏蔽，会出现“粘贴两遍 / 剪切异常”，因此放行。
-    const EDITOR_SELECTOR = '.cm-editor,.CodeMirror,.ProseMirror,.monaco-editor,.ace_editor,.ace-editor';
+    // CKEditor 5（智慧树问答框、大量高校系统）同样属于这一类。
+    const EDITOR_SELECTOR = [
+        '.cm-editor', '.CodeMirror',             // CodeMirror 5 / 6
+        '.ProseMirror',                          // ProseMirror / TipTap / 飞书文档
+        '.monaco-editor',                        // Monaco（VS Code 内核）
+        '.ace_editor', '.ace-editor',            // Ace
+        '.ck-editor__editable', '.ck-content',   // CKEditor 5
+        '.ql-editor',                            // Quill
+        '.tox-edit-area',                        // TinyMCE
+        '.fr-element'                            // Froala
+    ].join(',');
 
     function inCustomEditor(node) {
         return !!(node && node.nodeType === 1 && node.closest &&
@@ -156,15 +163,14 @@
     }
 
     /* --------------------------------------------------------------------
-     * CodeMirror 6 粘贴穿透
+     * 粘贴穿透（通用）
      *
-     * 有些站点（如 PTA 考试）并不在 DOM 层拦截粘贴，而是在编辑器内部判断：
-     * 只要一次粘贴插入的非空白字符数超过阈值，就撤销该次修改并提示“禁止粘贴”。
-     * 这种拦截与 preventDefault 无关，DOM 层无法解除。
+     * 有些站点并不在 DOM 层拦截粘贴，而是在编辑器内部判断：
+     *  · CodeMirror 6（如 PTA）：一次粘贴插入的非空白字符数超过阈值就撤销并提示“禁止粘贴”；
+     *  · CKEditor 5（如智慧树问答框）：DOM 层直接 preventDefault，编辑器自己收不到事件。
      *
-     * 做法：在捕获阶段抢下 paste 事件（读剪贴板 → 阻止编辑器自身处理），
-     * 再用 EditorView.dispatch 直接写入文本，并打上非 "input.*" 的事件标记，
-     * 使站点的“输入长度”检测不会命中。
+     * 做法统一为：捕获阶段抢下 paste 事件（读剪贴板 → 阻止编辑器自身处理），
+     * 再用各编辑器自己的 API 直接写入文本。
      * ------------------------------------------------------------------ */
 
     // CodeMirror 6 会把内部 tile 以 `cmTile` 属性挂在编辑器 DOM 上，
@@ -211,6 +217,67 @@
             userEvent: 'bypass.paste'
         });
         view.focus();
+    }, true);
+
+    // CKEditor 5：问答框这类富文本，站点在 DOM 层拦截 paste，编辑器自己收不到事件。
+    // 直接走 model 插入（按行分段），配合上面的 preventDefault 屏蔽站点拦截。
+    function findCkEditor(e) {
+        const path = (e.composedPath && e.composedPath()) || [e.target];
+        for (let i = 0; i < path.length; i++) {
+            const el = path[i];
+            if (!el || el.nodeType !== 1) continue;
+            if (el.ckeditorInstance) return el.ckeditorInstance;
+            if (el.classList &&
+                (el.classList.contains('ck-editor__editable') || el.classList.contains('ck-content')) &&
+                el.ckeditorInstance) {
+                return el.ckeditorInstance;
+            }
+        }
+        return null;
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function ckInsertText(editor, text) {
+        const html = String(text).replace(/\r\n?/g, '\n').split('\n')
+            .map(function (line) { return line ? '<p>' + escapeHtml(line) + '</p>' : '<p></p>'; })
+            .join('');
+        try {
+            editor.editing.view.focus();
+            editor.model.change(function (writer) {
+                const sel = editor.model.document.selection;
+                if (!sel || !sel.anchor) {
+                    writer.setSelection(writer.createPositionAt(editor.model.document.getRoot(), 'end'));
+                }
+            });
+            const modelFragment = editor.data.toModel(editor.data.processor.toView(html));
+            editor.model.insertContent(modelFragment, editor.model.document.selection);
+            return true;
+        } catch (err) {
+            // 兜底：直接改写整篇内容（会丢失光标位置，但至少不丢粘贴内容）
+            try {
+                editor.setData((editor.getData() || '') + '<p>' + escapeHtml(text) + '</p>');
+                return true;
+            } catch (err2) {
+                return false;
+            }
+        }
+    }
+
+    // 挂在 window 捕获阶段，保证早于站点在 document / window 上注册的拦截器
+    window.addEventListener('paste', function (e) {
+        const editor = findCkEditor(e);
+        if (!editor) return;
+        const cd = e.clipboardData;
+        if (!cd) return;
+        const text = cd.getData('text/plain');
+        if (!text) return;
+
+        e.stopImmediatePropagation();
+        nativePreventDefault.call(e);
+        ckInsertText(editor, text);
     }, true);
 
     /* ============================== 启动 ============================== */
